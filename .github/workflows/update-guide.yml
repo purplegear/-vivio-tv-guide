@@ -26,6 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           persist-credentials: true
       - uses: actions/setup-node@v4
         with:
@@ -41,11 +42,15 @@ jobs:
           git add docs/data
           if ! git diff --cached --quiet; then
             git commit -m 'chore: refresh real TV guide data [skip ci]'
-            git push
+            if ! git push origin HEAD:main; then
+              echo "::warning::Could not persist refreshed data to GitHub; continuing to publish this fresh build."
+            fi
           else
             echo 'No EPG changes to commit'
           fi
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
