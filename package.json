@@ -1,0 +1,8 @@
+{
+  "name": "vivio-tv-guide-free",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {"update": "node scripts/build-data.js", "test": "node --test tests/*.test.js"},
+  "engines": {"node": ">=20"}
+}

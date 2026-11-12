@@ -1,0 +1,16 @@
+{
+  "name": "VIVIO TV Guide",
+  "short_name": "VIVIO TV",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f2f5f8",
+  "theme_color": "#d3dce8",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
