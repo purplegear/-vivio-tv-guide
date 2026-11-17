@@ -114,7 +114,7 @@ export async function parseXmltv(response, {limitUncompressed=MAX_XML_BYTES}={})
   const t=field(entry,'title');if(!t)return;
   let ch=channels.get(id);
   if(!ch){ch={id,name:id,icon:'',cats:classify(id),pr:[]};channels.set(id,ch)}
-  ch.pr.push({s,e,t,d:field(entry,'desc').slice(0,700),g:field(entry,'category')});programmes++;
+  ch.pr.push({s,e,t,d:field(entry,'desc').slice(0,700),g:field(entry,'category'),sub:field(entry,'sub-title').slice(0,180)});programmes++;
   if(firstProgramme===null||s<firstProgramme)firstProgramme=s;
   if(lastProgramme===null||e>lastProgramme)lastProgramme=e;
  };
@@ -142,14 +142,65 @@ function normalizeName(s){
  .replace(/\b(ultra hd|fhd|hd|sd|4k|uhd)\b/g,'')
  .replace(/[^\p{L}\p{N}]+/gu,'').trim();
 }
+// Match by channel, nearly identical broadcast times and normalized title.
+// Later sources can enrich descriptions without inventing programmes.
+const programmeIndices = new WeakMap();
+function normalizedProgrammeTitle(title){
+ return String(title || '').toLocaleLowerCase().normalize('NFKD')
+  .replace(/[\u0300-\u036f]/g,'').replace(/[\p{P}\p{S}]+/gu,' ')
+  .replace(/\s+/g,' ').trim();
+}
+function programmeIndex(channel){
+ let index=programmeIndices.get(channel);
+ if(!index){
+  index=new Map();
+  for(const entry of channel.pr){
+   const bucket=Math.floor(entry.s/300000);
+   if(!index.has(bucket))index.set(bucket,[]);
+   index.get(bucket).push(entry);
+  }
+  programmeIndices.set(channel,index);
+ }
+ return index;
+}
+function isSameProgramme(a,b){
+ if(Math.abs(a.s-b.s)>3*60000 || Math.abs(a.e-b.e)>6*60000)return false;
+ const x=normalizedProgrammeTitle(a.t),y=normalizedProgrammeTitle(b.t);
+ if(!x || !y)return false;
+ if(x===y)return true;
+ const shorter=x.length<y.length?x:y, longer=x.length<y.length?y:x;
+ return shorter.length>=16 && shorter.length/longer.length>=0.82 && longer.includes(shorter);
+}
+function descriptionQuality(d){
+ const x=String(d||'').replace(/\/n\/|\s+/gi,' ').trim();
+ return /^(n\/?a|no description|без описание|няма описание|\-+)$/i.test(x)?0:x.length;
+}
 function mergeChannel(map,channel,country){
  const key=normalizeName(channel.name)||channel.id;
  const existing=map.get(key);
- if(!existing){map.set(key,{...channel,id:`${country}:${key}`});return;}
+ if(!existing){map.set(key,{...channel,id:country+':'+key});return;}
  if(!existing.icon&&channel.icon)existing.icon=channel.icon;
- // A single source's overlapping schedules may disagree; prefer the first source's entries.
- const seen=new Set(existing.pr.map(p=>`${p.s}:${p.e}:${p.t}`));
- for(const p of channel.pr){const k=`${p.s}:${p.e}:${p.t}`;if(!seen.has(k)){seen.add(k);existing.pr.push(p)}}
+ const index=programmeIndex(existing);
+ for(const incoming of channel.pr){
+  const bucket=Math.floor(incoming.s/300000);
+  let matched=null;
+  for(const offset of [-1,0,1]){
+   for(const entry of index.get(bucket+offset)||[]){
+    if(isSameProgramme(entry,incoming)){matched=entry;break;}
+   }
+   if(matched)break;
+  }
+  if(matched){
+   const present=descriptionQuality(matched.d),extra=descriptionQuality(incoming.d);
+   if(extra && (!present || (present<45 && extra>present+45)))matched.d=incoming.d;
+   if(!matched.g && incoming.g)matched.g=incoming.g;
+   if(!matched.sub && incoming.sub)matched.sub=incoming.sub;
+  }else{
+   existing.pr.push(incoming);
+   if(!index.has(bucket))index.set(bucket,[]);
+   index.get(bucket).push(incoming);
+  }
+ }
  existing.cats=[...new Set([...existing.cats,...channel.cats])];
 }
 
