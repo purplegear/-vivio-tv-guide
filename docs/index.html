@@ -21,6 +21,85 @@
 .tl-event.no-data{border:1px dashed var(--border);background:transparent;color:var(--muted)}
 .timeline-footer{font-size:11px;color:var(--muted)}
 @media(max-width:700px){.channel-card{grid-template-columns:minmax(0,1fr) 40px;padding:13px;gap:6px}.channel-ident{grid-column:1}.channel-card .program-open{grid-column:1 / -1;grid-row:2}.channel-card .fav{grid-column:2;grid-row:1}.title-main small{display:none}.country{padding:0 5px;min-height:41px}.topbar{gap:6px;padding:9px 10px;min-height:64px}.title-main strong{font-size:15px}.theme-btn{padding:0 6px;min-width:38px}.clock{font-size:14px}.clock small{font-size:9px}.hero-side{display:none}.content{padding:12px}.hero{padding:17px}.hero h1{font-size:20px}.controls .dates{flex-wrap:wrap}.status{padding:11px}.search-wrap input{font-size:14px}}
+
+/* Modal has its own theme: it sits outside .main, so it must not inherit
+   undefined CSS variables or render transparent over the TV guide. */
+.dialog-overlay.light{
+  --surface:#ffffff;--text:#27344b;--muted:#68798c;--border:#dce5ef;
+  --well:#eef3f9;--accent:#316fc4;
+}
+.dialog-overlay.dark{
+  --surface:#1c2938;--text:#f5f8fd;--muted:#b4c4d9;--border:#435875;
+  --well:#26384d;--accent:#8eb9ff;
+}
+.dialog-overlay{
+  background:rgba(5,12,23,.78);
+  backdrop-filter:blur(5px);
+  -webkit-backdrop-filter:blur(5px);
+  z-index:120;
+}
+.dialog-overlay .dialog{
+  position:relative;
+  isolation:isolate;
+  width:min(640px,100%);
+  max-height:min(88dvh,850px);
+  background:var(--surface);
+  color:var(--text);
+  border:1px solid var(--border);
+  box-shadow:0 22px 80px rgba(0,0,0,.55);
+}
+.dialog-overlay .dialog-header{
+  position:sticky;top:-23px;z-index:2;
+  padding:4px 0 14px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+}
+.dialog-overlay .dialog-header h3{
+  color:var(--text);
+  line-height:1.3;
+  font-size:clamp(17px,2.2vw,22px);
+}
+.dialog-overlay .description,.dialog-overlay .day-heading{
+  color:var(--muted);
+}
+.dialog-overlay #dialogContent{font-size:14px;line-height:1.5;color:var(--text);}
+.dialog-overlay #dialogContent h4{font-size:15px;margin:20px 0 10px;}
+.dialog-overlay #dialogContent p{margin:10px 0;}
+.dialog-overlay .day-programmes{
+  max-height:min(42dvh,350px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:6px;
+  background:var(--well);
+}
+.dialog-overlay .day-entry{
+  display:block;width:100%;text-align:left;min-height:44px;
+  padding:10px 12px;margin:3px 0;
+  border:1px solid transparent;border-radius:9px;
+  background:var(--surface);color:var(--text);
+  line-height:1.45;cursor:pointer;
+}
+.dialog-overlay .day-entry:hover,.dialog-overlay .day-entry:focus-visible{
+  border-color:var(--accent);
+}
+.dialog-overlay .day-entry.selected{
+  background:var(--surface);
+  border-color:var(--accent);
+  box-shadow:inset 3px 0 0 var(--accent);
+  color:var(--text);
+  font-weight:800;
+}
+.dialog-overlay .square-btn{color:var(--text);background:var(--well);}
+body.dialog-open{overflow:hidden;}
+@media(max-width:620px){
+  .dialog-overlay{padding:10px;align-items:center;}
+  .dialog-overlay .dialog{width:100%;padding:16px;max-height:91dvh;border-radius:18px;}
+  .dialog-overlay .dialog-header{top:-16px;}
+  .dialog-overlay .day-programmes{max-height:42dvh;}
+}
+
 </style></head><body>
 <div class="layout"><aside class="sidebar" id="sidebar"><div class="side-brand"><span class="side-logo">▣</span><div><strong>VIVIO</strong><small>TV GUIDE</small></div></div><div class="side-caption">НАВИГАЦИЯ</div><nav id="sidebarNav" aria-label="Категории"></nav><div class="sidebar-bottom">Free XMLTV · <strong>Powered by VIVIO</strong></div></aside><div class="overlay" id="overlay"></div>
 <div class="main light" id="main"><header class="topbar"><button class="menu-toggle" id="menuBtn" aria-label="Меню">☰</button><div class="title-main"><strong>VIVIO <i>TV Guide</i></strong><small>Реална телевизионна програма</small></div><div class="top-actions"><div class="clock" id="countryClock">--:--</div><select class="country" id="country" aria-label="Държава"><option value="FR">🇫🇷 Франция</option><option value="BG">🇧🇬 България</option><option value="GB">🇬🇧 UK</option></select><button id="themeBtn" class="theme-btn" aria-label="Смени тема">☾ Dark</button></div></header>
@@ -116,14 +195,17 @@ function renderTimeline(list){if(!current[country]){$('timelineContent').innerHT
   const mins=(p.s-windowFrom())/60000,span=(p.e-p.s)/60000;const left=Math.max(0,mins*ph/60),wid=Math.min(width-left,span*ph/60);if(wid<6||left>=width)return '';const active=p.s<=now&&p.e>now&&date===today();return `<button type="button" data-prog="${escape(ch.id)}" data-start="${p.s}" class="tl-event ${active?'now':''}" style="left:${left}px;width:${Math.max(6,wid-2)}px" title="${escape(p.t)}"><b>${escape(p.t)}</b><small>${time(p.s)}–${time(p.e)}</small></button>`}).join('');return `<div class="tl-row"><div class="sticky-chan"><div class="tl-name" title="${escape(ch.name)}">${escape(ch.name)}<small>${(ch.cats||[]).map(cardCategory)[0]||'Друго'}</small></div><button class="tl-fav" data-fav="${escape(ch.id)}">${favs.has(key)?'★':'☆'}</button></div><div class="tl-track" style="width:${width}px">${blocks||'<span class="no-guide">Няма EPG</span>'}</div></div>`}).join('');$('timelineContent').innerHTML=header+(rows||'<div class="empty">Няма съвпадащи канали.</div>')}
 function windowFrom(){const tz=TZ[country],dt=new Date(date+'T00:00:00Z');let guess=dt.getTime();const parts=Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date(guess)).filter(x=>x.type!=='literal').map(x=>[x.type,+x.value]));const localAtGuess=Date.UTC(parts.year,parts.month-1,parts.day,parts.hour);return guess+(guess-localAtGuess)}
 function jump(h,smooth=true){let viewport=$('timelineViewport');viewport.scrollTo({left:Math.max(0,Math.min(23,+h||0))*pxH(),behavior:smooth?'smooth':'instant'});$('jumpHour').value=String(+h||0)}
-function render(){document.getElementById('main').className='main '+theme;$('themeBtn').textContent=theme==='dark'?'☀ Light':'☾ Dark';$('country').value=country;$('date').value=date;$('heroTitle').textContent=mode==='now'?'Какво дават сега?':'ТВ програма по часове';$('heroSubtitle').textContent=current[country]?'Обновявана ТВ програма · местно време на '+CN[country]:'Свързване с реалните ТВ програмни данни…';$('sectionTitle').textContent=mode==='now'?'Сега по телевизията':'Програма по часове';$('nowBtn').classList.toggle('active',mode==='now');$('scheduleBtn').classList.toggle('active',mode==='timeline');$('todayBtn').classList.toggle('active',date===today());$('tomorrowBtn').classList.toggle('active',date===addDays(today(),1));$('sort').textContent=sortDesc?'Я–А ↓':'А–Я ↑';renderNav();updateClock();const x=filtered();const y=x.slice(0,limit);$('resultCount').textContent=x.length+' / '+(current[country]?.channels.length||0)+' канала';$('nowList').hidden=mode!=='now';$('scheduleArea').hidden=mode!=='timeline';$('moreNow').hidden=mode!=='now'||limit>=x.length;$('moreTimeline').hidden=mode!=='timeline'||limit>=x.length;renderNow(y);renderTimeline(y)}
+function render(){document.getElementById('main').className='main '+theme;$('dialogLayer').classList.toggle('dark',theme==='dark');$('dialogLayer').classList.toggle('light',theme!=='dark');$('themeBtn').textContent=theme==='dark'?'☀ Light':'☾ Dark';$('country').value=country;$('date').value=date;$('heroTitle').textContent=mode==='now'?'Какво дават сега?':'ТВ програма по часове';$('heroSubtitle').textContent=current[country]?'Обновявана ТВ програма · местно време на '+CN[country]:'Свързване с реалните ТВ програмни данни…';$('sectionTitle').textContent=mode==='now'?'Сега по телевизията':'Програма по часове';$('nowBtn').classList.toggle('active',mode==='now');$('scheduleBtn').classList.toggle('active',mode==='timeline');$('todayBtn').classList.toggle('active',date===today());$('tomorrowBtn').classList.toggle('active',date===addDays(today(),1));$('sort').textContent=sortDesc?'Я–А ↓':'А–Я ↑';renderNav();updateClock();const x=filtered();const y=x.slice(0,limit);$('resultCount').textContent=x.length+' / '+(current[country]?.channels.length||0)+' канала';$('nowList').hidden=mode!=='now';$('scheduleArea').hidden=mode!=='timeline';$('moreNow').hidden=mode!=='now'||limit>=x.length;$('moreTimeline').hidden=mode!=='timeline'||limit>=x.length;renderNow(y);renderTimeline(y)}
 function openDetail(id,start){const ch=(current[country]?.channels||[]).find(x=>x.id===id);if(!ch)return;const day=getDay(ch),p=day.find(x=>x.s===+start);$('dialogTitle').textContent=p?p.t:ch.name;let content=`<p><b>📺 ${escape(ch.name)}</b></p><p>📆 ${escape(date.split('-').reverse().join('.'))}</p>`;if(p){content+=`<p><b>🕒 ${time(p.s)} – ${time(p.e)}</b></p>${p.g?'<p>Жанр: '+escape(p.g)+'</p>':''}<p class="description">${p.d?escape(p.d):'Източникът не предоставя описание за това предаване.'}</p>`}else content+='<p>Няма актуални EPG записи за този канал.</p>';
-content+='<h4>Програма за избрания ден</h4><div style="max-height:260px;overflow:auto">'+(day.length?day.slice(0,60).map(x=>`<button style="display:block;width:100%;text-align:left;padding:9px;margin-bottom:4px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text)" data-prog="${escape(ch.id)}" data-start="${x.s}">${time(x.s)} · ${escape(x.t)}</button>`).join(''):'Няма данни')+'</div>';
-$('dialogContent').innerHTML=content;$('dialogLayer').classList.add('show')}
-function closeDialog(){$('dialogLayer').classList.remove('show')}
+content+='<h4>Програма за избрания ден</h4><div class="day-programmes">'+(day.length?day.slice(0,150).map(x=>`<button class="day-entry${p&&x.s===p.s?' selected':''}" type="button" data-prog="${escape(ch.id)}" data-start="${x.s}" aria-label="${escape(time(x.s)+' '+x.t)}">${time(x.s)} – ${time(x.e)} · ${escape(x.t)}</button>`).join(''):'Няма данни')+'</div>';
+$('dialogContent').innerHTML=content;
+$('dialogLayer').classList.add('show');document.body.classList.add('dialog-open');
+requestAnimationFrame(()=>{const selected=$('dialogContent').querySelector('.day-entry.selected');if(selected){const list=selected.closest('.day-programmes');list.scrollTop=Math.max(0,selected.offsetTop-list.offsetTop-list.clientHeight/3)}});
+}
+function closeDialog(){$('dialogLayer').classList.remove('show');document.body.classList.remove('dialog-open')}
 function closeMenu(){$('sidebar').classList.remove('open');$('overlay').classList.remove('show')}
 function events(e){const p=e.target.closest('[data-prog]');if(p){openDetail(p.dataset.prog,p.dataset.start);return}const f=e.target.closest('[data-fav]');if(f){const ch=current[country]?.channels.find(x=>x.id===f.dataset.fav);if(!ch)return;const key=chKey(ch);favs.has(key)?favs.delete(key):favs.add(key);set('v4favs',[...favs]);render();return}const c=e.target.closest('[data-cat]');if(c){cat=c.dataset.cat;limit=35;closeMenu();render();return}}
-$('main').addEventListener('click',events);$('sidebarNav').addEventListener('click',events);
+$('main').addEventListener('click',events);$('sidebarNav').addEventListener('click',events);$('dialogLayer').addEventListener('click',events);
 $('menuBtn').onclick=()=>{$('sidebar').classList.add('open');$('overlay').classList.add('show')};$('overlay').onclick=closeMenu;$('closeDialog').onclick=closeDialog;$('dialogLayer').onclick=e=>{if(e.target===$('dialogLayer'))closeDialog()};document.onkeydown=e=>{if(e.key==='Escape'){closeDialog();closeMenu()}};
 $('country').onchange=e=>{country=e.target.value;date=today();cat='now';mode='now';limit=35;set('v4country',country);render();fetchCountry(country)};
 $('themeBtn').onclick=()=>{theme=theme==='dark'?'light':'dark';set('v4theme',theme);render()};$('search').oninput=e=>{search=e.target.value;limit=35;render()};$('sort').onclick=()=>{sortDesc=!sortDesc;render()};
