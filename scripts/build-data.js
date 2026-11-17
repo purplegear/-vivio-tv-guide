@@ -19,14 +19,14 @@ export function makeDaySnapshot(ds,country,date){
  return {version:1,...day,sourceMode:'static',channels:day.channels};
 }
 async function writeJSON(file,obj){await fs.mkdir(path.dirname(file),{recursive:true});const content=JSON.stringify(obj);await fs.writeFile(file,content+'\n');}
-export async function build({manager=createFeedManager({storage:false}),countries=COUNTRY_CODES,output=OUTPUT}={}){
+export async function build({manager=createFeedManager({storage:false}),countries=COUNTRY_CODES,output=OUTPUT,referenceDate=new Date()}={}){
  await fs.mkdir(output,{recursive:true});
  const result={version:1,generatedAt:new Date().toISOString(),countries:{}};
  for(const country of countries){
   const reports=[];
   try{
    const ds=await manager.get(country,{force:true});
-   const today=todayLocal(country);let days=[];
+   const today=todayLocal(country,referenceDate);let days=[];
    for(let step=-1;step<=7;step++){
     const day=datePlus(today,step);
     const snapshot=makeDaySnapshot(ds,country,day);
