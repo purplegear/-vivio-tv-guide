@@ -60,3 +60,16 @@ test('category mapping includes channels like CANAL+ Sport and TMC',()=>{
  assert.ok(classify('CANAL+ Sport').includes('sport'));
  assert.ok(classify('БНТ 1').includes('general'));
 });
+
+test('same programme across EPG sources inherits synopsis without duplicate record',async()=>{
+ const plain=(xml)=>new Response(xml,{status:200,headers:{'content-type':'text/xml'}});
+ const blank='<tv><channel id="a"><display-name>Diema Sport 2 HD</display-name></channel><programme channel="a" start="20261117234000 +0200" stop="20261118001500 +0200"><title>Студио УЕФА Лига на нациите директно</title></programme></tv>';
+ const detailed='<tv><channel id="b"><display-name>Diema Sport 2</display-name></channel><programme channel="b" start="20261117234000 +0200" stop="20261118001500 +0200"><title>Студио УЕФА Лига на нациите директно</title><desc>Обзор с експертни анализи на мачовете.</desc><sub-title>Коментарно студио</sub-title></programme></tv>';
+ const src={BG:[{name:'first',url:'https://unit.test/first'},{name:'second',url:'https://unit.test/second'}]};
+ const fetchMock=async (url)=>plain(url.endsWith('/first')?blank:detailed);
+ const ds=await createFeedManager({sources:src,remoteFetch:fetchMock,storage:false}).get('BG');
+ assert.equal(ds.channels.length,1);
+ assert.equal(ds.channels[0].pr.length,1);
+ assert.equal(ds.channels[0].pr[0].d,'Обзор с експертни анализи на мачовете.');
+ assert.equal(ds.channels[0].pr[0].sub,'Коментарно студио');
+});
