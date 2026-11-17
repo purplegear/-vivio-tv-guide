@@ -21,7 +21,7 @@ test('static exporter handles independent country failures and only emits days w
  const folder=await fs.mkdtemp(path.join(os.tmpdir(),'vivio-static-'));
  const m={get:async c=>c==='BG'?Promise.reject(new Error('HTTP 401')):base};
  try{
-  const out=await build({manager:m,countries:['FR','BG'],output:folder});
+  const out=await build({manager:m,countries:['FR','BG'],output:folder,referenceDate:new Date('2026-11-12T12:00:00Z')});
   assert.equal(out.countries.FR.ok,true); // only records from the input snapshot, never invented
   assert.equal(out.countries.BG.ok,false);
   const fr=JSON.parse(await fs.readFile(path.join(folder,'FR',date+'.json')));
